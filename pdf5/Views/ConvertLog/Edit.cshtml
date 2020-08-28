@@ -1,0 +1,17 @@
+﻿@model pdf5.ViewModels.ConvertLogVMs.ConvertLogVM
+@inject IStringLocalizer<WalkingTec.Mvvm.Core.Program> Localizer;
+
+<wt:form vm="@Model">
+<wt:row items-per-row="ItemsPerRowEnum.Two">
+<wt:textbox field="Entity.SourceFileName" />
+<wt:textbox field="Entity.DistFileName" />
+<wt:textbox field="Entity.ConvertTime" />
+<wt:textbox field="Entity.UserName" />
+<wt:textbox field="Entity.ConvertStatus" />
+</wt:row>
+    <wt:hidden field="Entity.ID" />
+    <wt:row align="AlignEnum.Right">
+        <wt:submitbutton />
+        <wt:closebutton />
+    </wt:row>
+</wt:form>

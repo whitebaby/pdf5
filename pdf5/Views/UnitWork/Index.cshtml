@@ -1,0 +1,8 @@
+﻿@model pdf5.ViewModels.UnitWorkVMs.UnitWorkListVM
+@inject IStringLocalizer<WalkingTec.Mvvm.Core.Program> Localizer;
+
+<wt:searchpanel vm="@Model" reset-btn="true">
+<wt:row items-per-row="ItemsPerRowEnum.Three">
+</wt:row>
+</wt:searchpanel>
+<wt:grid vm="@Model" url="/UnitWork/Search"/>

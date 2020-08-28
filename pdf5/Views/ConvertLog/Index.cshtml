@@ -1,0 +1,13 @@
+﻿@model pdf5.ViewModels.ConvertLogVMs.ConvertLogListVM
+@inject IStringLocalizer<WalkingTec.Mvvm.Core.Program> Localizer;
+
+<wt:searchpanel vm="@Model" reset-btn="true">
+<wt:row items-per-row="ItemsPerRowEnum.Three">
+<wt:textbox field="Searcher.SourceFileName" />
+<wt:textbox field="Searcher.DistFileName" />
+<wt:textbox field="Searcher.ConvertTime" />
+<wt:textbox field="Searcher.UserName" />
+<wt:textbox field="Searcher.ConvertStatus" />
+</wt:row>
+</wt:searchpanel>
+<wt:grid vm="@Model" url="/ConvertLog/Search"/>
