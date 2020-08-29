@@ -35,6 +35,10 @@ namespace pdf5.ViewModels.ConvertLogVMs
         public String UserName { get; set; }
         [Display(Name = "转换状态")]
         public String ConvertStatus { get; set; }
+        [Display(Name = "源文件ID")]
+        public String SourceFileID { get; set; }
+        [Display(Name = "目标文件ID")]
+        public String DistFileID { get; set; }
 
         protected override void InitVM()
         {

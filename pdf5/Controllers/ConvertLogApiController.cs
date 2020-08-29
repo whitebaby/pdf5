@@ -13,6 +13,7 @@ using Aspose.Pdf;
 using System.Diagnostics;
 using System.IO;
 using static Aspose.Pdf.UnifiedSaveOptions;
+using System.Threading;
 
 namespace pdf5.Controllers
 {
@@ -179,51 +180,72 @@ namespace pdf5.Controllers
             }
             var vm = CreateVM<FileAttachmentVM>(id);
             String sourceFileName = vm.Entity.FileName;
-            String sourchFileLocation = @"D:" + vm.Entity.Path;
+            String sourchFileLocation = @"C:" + vm.Entity.Path;
             String distFileName = sourceFileName.Replace("pdf", "docx");
-            String distFullPath = @"D:/result/" + distFileName;
+            String distFullPath = @"D:\result\" + distFileName;
+            Guid SourceFileID = id;
+            Guid DistFileID = Guid.NewGuid();
+            //添加convertLog日志
+            await Task.Run(() => {
+                ConvertLog convertLog = new ConvertLog
+                {
+                    SourceFileName = sourceFileName,
+                    DistFileName = distFullPath,
+                    ConvertTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:ffff"),
+                    UserName = "xingmiao",
+                    ConvertStatus = "start",
+                    SourceFileID = SourceFileID.ToString(),
+                    DistFileID = DistFileID.ToString()
+                };
+                DC.AddEntity(convertLog);
+
+                int x = DC.SaveChanges();
+                if (x > 0)
+                {
+                    Debug.WriteLine("添加converLog日志成功");
+                    
+                }
+            });
+            
             if (sourchFileLocation.Length > 5)
             {
+                Thread t = new Thread(() => {
+                    //转换文档，然后更新状态
+                    Task.Run(() =>
+                    {
+                        GetLicense();
+                        Document pdfDocument = new Document(sourchFileLocation);
+                        DocSaveOptions saveOptions = new DocSaveOptions();
+                        saveOptions.CustomProgressHandler = new UnifiedSaveOptions.ConversionProgressEventHandler(ShowProgressOnConsole);
+                        saveOptions.Format = DocSaveOptions.DocFormat.DocX;
+                        pdfDocument.Save(distFullPath, saveOptions);
+
+
+                    }).ContinueWith((t) =>
+                    {
+                        Debug.WriteLine(t);
+                        ConvertLog updataConverLog = DC.Set<ConvertLog>().FirstOrDefault(x => x.SourceFileID == SourceFileID.ToString());
+                        updataConverLog.ConvertStatus = "success";
+                        DC.UpdateEntity(updataConverLog);
+
+                        int x = DC.SaveChanges();
+                        if (x > 0)
+                        {
+                            Debug.WriteLine("修改成功");
+                        }
+
+
+                    });
+                });
+                t.IsBackground = false;//因为线程IsBackground = false，不是后台线程，所以主线程即使完成了，子线程也会继续完成
+                t.Start();
+                //插入转换后附件文档信息，但不上传
                 await Task.Run(() =>
                 {
-                    getLicense();
-                    Document pdfDocument = new Document(sourchFileLocation);
-                    DocSaveOptions saveOptions = new DocSaveOptions();
-                    saveOptions.CustomProgressHandler = new UnifiedSaveOptions.ConversionProgressEventHandler(ShowProgressOnConsole);
-                    saveOptions.Format = DocSaveOptions.DocFormat.DocX;
-                    pdfDocument.Save(distFullPath, saveOptions);
-                    ConvertLog convertLog = new ConvertLog
-                    {
-                        SourceFileName = sourceFileName,
-                        DistFileName = distFullPath,
-                        ConvertTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:ffff"),
-                        UserName = "xingmiao",
-                        ConvertStatus = "start"
-                    };
-                    DC.AddEntity(convertLog);
-
-                    int x = DC.SaveChanges();
-                    if (x > 0)
-                    {
-                        Debug.WriteLine("添加成功");
-                    }
-
-                }).ContinueWith((t) =>
-                {
-                    Debug.WriteLine(t);
-                    ConvertLog updataConverLog = DC.Set<ConvertLog>().FirstOrDefault(x => x.SourceFileName == sourceFileName);
-                    updataConverLog.ConvertStatus = "success";
-                    DC.UpdateEntity(updataConverLog);
-
-                    int x = DC.SaveChanges();
-                    if (x > 0)
-                    {
-                        Debug.WriteLine("修改成功");
-                    }
 
                     var sm = ConfigInfo.FileUploadOptions.SaveFileMode;
                     var vm2 = CreateVM<FileAttachmentVM>();
-                    vm2.Entity.ID = Guid.NewGuid();
+                    vm2.Entity.ID = DistFileID;
                     vm2.Entity.FileName = distFileName;
                     vm2.Entity.UploadTime = DateTime.Now;
                     vm2.Entity.SaveFileMode = sm;
@@ -233,37 +255,10 @@ namespace pdf5.Controllers
                     vm2.Entity.IsTemprory = false;
                     vm2.DoAdd();
                     return Ok(new { Id = vm2.Entity.ID.ToString(), Name = vm2.Entity.FileName });
+
                 });
-                //var t2 = Task.Run(() =>
-                //{
 
 
-                //    pdfDocument.Save(distFullPath, saveOptions);
-                //    ConvertLog convertLog = new ConvertLog
-                //    {
-                //        SourceFileName = sourceFileName,
-                //        DistFileName = distFullPath,
-                //        ConvertTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:ffff"),
-                //        userName = "xingmiao"
-                //    };
-                //    DC.AddEntity(convertLog);
-                //    var sm = ConfigInfo.FileUploadOptions.SaveFileMode;
-                //    var vm2 = CreateVM<FileAttachmentVM>();
-                //    vm2.Entity.ID = Guid.NewGuid();
-                //    vm2.Entity.FileName = distFileName;
-                //    vm2.Entity.UploadTime = DateTime.Now;
-                //    vm2.Entity.SaveFileMode = sm;
-                //    vm2.Entity.Length = 1113434;
-                //    vm2.Entity.Path = distFullPath;
-                //    vm2.Entity.FileExt = "docx";
-                //    vm2.Entity.IsTemprory = false;
-                //    vm2.DoAdd();
-                //    return Ok(new { Id = vm2.Entity.ID.ToString(), Name = vm2.Entity.FileName });
-
-                //});
-                //Task.WaitAll(t1, t2);
-                //t1,t2,t3 完成后输出下面的消息
-                //Console.WriteLine("t1,t2,t3 Is Complete");
                 return Ok("t1,t2,t3 Is Complete");
 
             }
@@ -274,7 +269,7 @@ namespace pdf5.Controllers
         }
         [ActionDescription("License")]
         [HttpPost("License")]
-        public void getLicense()
+        public void GetLicense()
         {
             string LData = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjxMaWNlbnNlPg0KICAgIDxEYXRhPg0KICAgICAgICA8TGljZW5zZWRUbz5pckRldmVsb3BlcnMuY29tPC9MaWNlbnNlZFRvPg0KICAgICAgICA8RW1haWxUbz5pbmZvQGlyRGV2ZWxvcGVycy5jb208L0VtYWlsVG8+DQogICAgICAgIDxMaWNlbnNlVHlwZT5EZXZlbG9wZXIgT0VNPC9MaWNlbnNlVHlwZT4NCiAgICAgICAgPExpY2Vuc2VOb3RlPkxpbWl0ZWQgdG8gMTAwMCBkZXZlbG9wZXIsIHVubGltaXRlZCBwaHlzaWNhbCBsb2NhdGlvbnM8L0xpY2Vuc2VOb3RlPg0KICAgICAgICA8T3JkZXJJRD43ODQzMzY0Nzc4NTwvT3JkZXJJRD4NCiAgICAgICAgPFVzZXJJRD4xMTk0NDkyNDM3OTwvVXNlcklEPg0KICAgICAgICA8T0VNPlRoaXMgaXMgYSByZWRpc3RyaWJ1dGFibGUgbGljZW5zZTwvT0VNPg0KICAgICAgICA8UHJvZHVjdHM+DQogICAgICAgICAgICA8UHJvZHVjdD5Bc3Bvc2UuVG90YWwgUHJvZHVjdCBGYW1pbHk8L1Byb2R1Y3Q+DQogICAgICAgIDwvUHJvZHVjdHM+DQogICAgICAgIDxFZGl0aW9uVHlwZT5FbnRlcnByaXNlPC9FZGl0aW9uVHlwZT4NCiAgICAgICAgPFNlcmlhbE51bWJlcj57RjJCOTcwNDUtMUIyOS00QjNGLUJENTMtNjAxRUZGQTE1QUE5fTwvU2VyaWFsTnVtYmVyPg0KICAgICAgICA8U3Vic2NyaXB0aW9uRXhwaXJ5PjIwOTkxMjMxPC9TdWJzY3JpcHRpb25FeHBpcnk+DQogICAgICAgIDxMaWNlbnNlVmVyc2lvbj4zLjA8L0xpY2Vuc2VWZXJzaW9uPg0KICAgIDwvRGF0YT4NCiAgICA8U2lnbmF0dXJlPlFYTndiM05sTGxSdmRHRnNMb1B5YjJSMVkzUWdSbUZ0YVd4NTwvU2lnbmF0dXJlPg0KPC9MaWNlbnNlPg==";
 
@@ -292,12 +287,7 @@ namespace pdf5.Controllers
             {
                 case ProgressEventType.TotalProgress:
                     Debug.WriteLine(string.Format("{0}  - Conversion progress : {1}% .", DateTime.Now.ToLongTimeString(), eventInfo.Value.ToString()));
-                    if (eventInfo.Value == 100)
-                    {
-
-                    }
                     break;
-
                 case ProgressEventType.SourcePageAnalized:
                     Debug.WriteLine(string.Format("{0}  - Source page {1} of {2} analyzed.", DateTime.Now.ToLongTimeString(), eventInfo.Value.ToString(), eventInfo.MaxValue.ToString()));
                     break;
@@ -308,12 +298,17 @@ namespace pdf5.Controllers
                     Debug.WriteLine(string.Format("{0}  - Result page {1} of {2} exported.", DateTime.Now.ToLongTimeString(), eventInfo.Value.ToString(), eventInfo.MaxValue.ToString()));
                     //插入
                     break;
-
                 default:
                     break;
             }
         }
-
+        [HttpPost("ConvertStatus")]
+        [ActionDescription("ConvertStatus")]
+        public ConvertLog ConvertStatus(Guid id)
+        {
+            ConvertLog queryConverLog = DC.Set<ConvertLog>().FirstOrDefault(x => x.SourceFileID == id.ToString());
+            return queryConverLog;
+        }
 
     }
 }

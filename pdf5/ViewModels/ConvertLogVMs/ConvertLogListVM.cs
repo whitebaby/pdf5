@@ -37,6 +37,8 @@ namespace pdf5.ViewModels.ConvertLogVMs
                 this.MakeGridHeader(x => x.ConvertTime),
                 this.MakeGridHeader(x => x.UserName),
                 this.MakeGridHeader(x => x.ConvertStatus),
+                this.MakeGridHeader(x => x.SourceFileID),
+                this.MakeGridHeader(x => x.DistFileID),
                 this.MakeGridHeaderAction(width: 200)
             };
         }
@@ -49,6 +51,8 @@ namespace pdf5.ViewModels.ConvertLogVMs
                 .CheckContain(Searcher.ConvertTime, x=>x.ConvertTime)
                 .CheckContain(Searcher.UserName, x=>x.UserName)
                 .CheckContain(Searcher.ConvertStatus, x=>x.ConvertStatus)
+                .CheckContain(Searcher.SourceFileID, x=>x.SourceFileID)
+                .CheckContain(Searcher.DistFileID, x=>x.DistFileID)
                 .Select(x => new ConvertLog_View
                 {
 				    ID = x.ID,
@@ -57,6 +61,8 @@ namespace pdf5.ViewModels.ConvertLogVMs
                     ConvertTime = x.ConvertTime,
                     UserName = x.UserName,
                     ConvertStatus = x.ConvertStatus,
+                    SourceFileID = x.SourceFileID,
+                    DistFileID = x.DistFileID,
                 })
                 .OrderBy(x => x.ID);
             return query;

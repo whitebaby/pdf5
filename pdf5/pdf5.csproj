@@ -31,7 +31,7 @@
 
   <ItemGroup>
     <Reference Include="Aspose.Pdf">
-      <HintPath>..\..\..\360极速浏览器下载\Aspose.PDF for .NET v19.1.0破解版\Aspose.PDF for .NET v19.1.0 (03 Jan 2019)\lib\netstandard2.0\Aspose.Pdf.dll</HintPath>
+      <HintPath>D:\app\web\aspose\Aspose.PDF for .NET v19.1.0 (03 Jan 2019)\lib\netstandard2.0\Aspose.Pdf.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>

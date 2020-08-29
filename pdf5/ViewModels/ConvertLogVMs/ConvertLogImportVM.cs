@@ -22,6 +22,10 @@ namespace pdf5.ViewModels.ConvertLogVMs
         public ExcelPropety UserName_Excel = ExcelPropety.CreateProperty<ConvertLog>(x => x.UserName);
         [Display(Name = "转换状态")]
         public ExcelPropety ConvertStatus_Excel = ExcelPropety.CreateProperty<ConvertLog>(x => x.ConvertStatus);
+        [Display(Name = "源文件ID")]
+        public ExcelPropety SourceFileID_Excel = ExcelPropety.CreateProperty<ConvertLog>(x => x.SourceFileID);
+        [Display(Name = "目标文件ID")]
+        public ExcelPropety DistFileID_Excel = ExcelPropety.CreateProperty<ConvertLog>(x => x.DistFileID);
 
 	    protected override void InitVM()
         {

@@ -20,6 +20,9 @@ namespace pdf5.Models
         public string UserName { get; set; }
         [Display(Name = "转换状态")]
         public string ConvertStatus { get; set; }
-
+        [Display(Name = "源文件ID")]
+        public string SourceFileID { get; set; }
+        [Display(Name = "目标文件ID")]
+        public string DistFileID { get; set; }
     }
 }
