@@ -14,6 +14,8 @@ using System.Diagnostics;
 using System.IO;
 using static Aspose.Pdf.UnifiedSaveOptions;
 using System.Threading;
+using Microsoft.AspNetCore.Authorization;
+using NPOI.XWPF.UserModel;
 
 namespace pdf5.Controllers
 {
@@ -172,7 +174,7 @@ namespace pdf5.Controllers
 
         [ActionDescription("Converting")]
         [HttpPost("Converting")]
-        public async Task<ActionResult> Converting(Guid id)
+        public async Task<ActionResult> Converting(Guid id,String disFileFormat)
         {
             if (id == Guid.Empty)
             {
@@ -181,8 +183,22 @@ namespace pdf5.Controllers
             var vm = CreateVM<FileAttachmentVM>(id);
             String sourceFileName = vm.Entity.FileName;
             String sourchFileLocation = @"C:" + vm.Entity.Path;
-            String distFileName = sourceFileName.Replace("pdf", "docx");
-            String distFullPath = @"D:\result\" + distFileName;
+            String distFileName =null;
+            switch (disFileFormat)
+            {
+                case "doc":
+                    distFileName = sourceFileName.Replace("pdf", "doc");
+                    break;
+                case "xls":
+                    distFileName = sourceFileName.Replace("pdf", "xls");
+                    break;
+                case "ppt":
+                    distFileName = sourceFileName.Replace("pdf", "ppt");
+                    break;
+                default:
+                    break;
+            }
+            String distFullPath = @"C:\result\" + distFileName;
             Guid SourceFileID = id;
             Guid DistFileID = Guid.NewGuid();
             //添加convertLog日志
@@ -209,19 +225,37 @@ namespace pdf5.Controllers
             
             if (sourchFileLocation.Length > 5)
             {
-                Thread t = new Thread(() => {
+                Thread t = new Thread(() =>
+                {
                     //转换文档，然后更新状态
                     Task.Run(() =>
                     {
                         GetLicense();
-                        Document pdfDocument = new Document(sourchFileLocation);
-                        DocSaveOptions saveOptions = new DocSaveOptions();
-                        saveOptions.CustomProgressHandler = new UnifiedSaveOptions.ConversionProgressEventHandler(ShowProgressOnConsole);
-                        saveOptions.Format = DocSaveOptions.DocFormat.DocX;
-                        pdfDocument.Save(distFullPath, saveOptions);
+                        if (disFileFormat == "doc")
+                        {
+                            Aspose.Pdf.Document pdfDocument = new Aspose.Pdf.Document(sourchFileLocation);
+                            DocSaveOptions saveOptions = new DocSaveOptions();
+                            saveOptions.CustomProgressHandler = new UnifiedSaveOptions.ConversionProgressEventHandler(ShowProgressOnConsole);
+                            saveOptions.Format = DocSaveOptions.DocFormat.Doc;
+                            pdfDocument.Save(distFullPath, saveOptions);
+                        }
+                         else if (disFileFormat == "xls")
+                        {
+                            Aspose.Pdf.Document pdfDocument = new Aspose.Pdf.Document(sourchFileLocation);
+                            ExcelSaveOptions saveOptions = new ExcelSaveOptions();
+                            saveOptions.Format = ExcelSaveOptions.ExcelFormat.XMLSpreadSheet2003;
+                            pdfDocument.Save(distFullPath, saveOptions);
+                        }
+                        else if (disFileFormat == "ppt")
+                        {
+                            Aspose.Pdf.Document pdfDocument = new Aspose.Pdf.Document(sourchFileLocation);
+                            PptxSaveOptions saveOptions = new PptxSaveOptions();
+                            pdfDocument.Save(distFullPath, saveOptions);
+                        }
 
 
-                    }).ContinueWith((t) =>
+
+            }).ContinueWith((t) =>
                     {
                         Debug.WriteLine(t);
                         ConvertLog updataConverLog = DC.Set<ConvertLog>().FirstOrDefault(x => x.SourceFileID == SourceFileID.ToString());
@@ -236,8 +270,10 @@ namespace pdf5.Controllers
 
 
                     });
-                });
-                t.IsBackground = false;//因为线程IsBackground = false，不是后台线程，所以主线程即使完成了，子线程也会继续完成
+                })
+                {
+                    IsBackground = false//因为线程IsBackground = false，不是后台线程，所以主线程即使完成了，子线程也会继续完成
+                };
                 t.Start();
                 //插入转换后附件文档信息，但不上传
                 await Task.Run(() =>
@@ -259,13 +295,41 @@ namespace pdf5.Controllers
                 });
 
 
-                return Ok("t1,t2,t3 Is Complete");
+                return Ok(new { sourceFileName, sourchFileLocation, distFileName , distFullPath , SourceFileID , DistFileID = DistFileID.ToString()});
 
             }
             else
             {
                 return Ok("错误");
             }
+        }
+
+        [HttpGet("downloadFile/{id}")]
+        [AllowAnonymous]
+        [ActionDescription("下载文件")]
+        public IActionResult DownloadFile(Guid id)
+        {
+            if (id == Guid.Empty)
+            {
+                return BadRequest("没有找到文件");
+            }
+            var vm = CreateVM<FileAttachmentVM>(id);
+            var data = FileHelper.GetFileByteForDownLoadByVM(vm, ConfigInfo);
+            if (data == null)
+            {
+                data = new byte[0];
+            }
+            var ext = vm.Entity.FileExt.ToLower();
+            var contenttype = "application/octet-stream";
+            if (ext == "pdf")
+            {
+                contenttype = "application/pdf";
+            }
+            if (ext == "png" || ext == "bmp" || ext == "gif" || ext == "tif" || ext == "jpg" || ext == "jpeg")
+            {
+                contenttype = $"image/{ext}";
+            }
+            return File(data, contenttype, vm.Entity.FileName ?? (Guid.NewGuid().ToString() + ext));
         }
         [ActionDescription("License")]
         [HttpPost("License")]
